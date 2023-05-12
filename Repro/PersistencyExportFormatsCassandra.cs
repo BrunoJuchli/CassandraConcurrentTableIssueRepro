@@ -5,12 +5,12 @@ namespace Repro
 {
     public class PersistencyExportFormatsCassandra
     {
-        private readonly ISession session;
+        private readonly Table<ExportFormatCassandraEntity> table;
 
         public PersistencyExportFormatsCassandra(
             ISession session)
         {
-            this.session = session;
+            table = session.GetTable<ExportFormatCassandraEntity>();
         }
 
         public void AddOrUpdate(ExportFormatCassandraEntity model)
@@ -25,15 +25,15 @@ namespace Repro
                 .ExecuteAsync();
         }
 
-        private CqlInsert<ExportFormatCassandraEntity> CreateAddOrUpdateStatement(ExportFormatCassandraEntity table)
+        private CqlInsert<ExportFormatCassandraEntity> CreateAddOrUpdateStatement(ExportFormatCassandraEntity entity)
         {
-            return session.GetTable<ExportFormatCassandraEntity>()
-                .Insert(table);
+            return table               
+                .Insert(entity);
         }
 
         public void Delete(ExportFormatCassandraEntity entity)
         {
-            session.GetTable<ExportFormatCassandraEntity>()
+            table
                 .Where(x => x.ServerUserID == entity.ServerUserID && x.ID == entity.ID)
                 .Delete()
                 .Execute();
@@ -41,22 +41,19 @@ namespace Repro
 
         public IEnumerable<ExportFormatCassandraEntity> GetAll()
         {
-            return session
-                .GetTable<ExportFormatCassandraEntity>()
-                .Execute();
+            return table.Execute();
         }
 
         public IEnumerable<ExportFormatCassandraEntity> GetAllForServerUser(long serverUserId)
         {
-            return session.GetTable<ExportFormatCassandraEntity>()
+            return table
                 .Where(x => x.ServerUserID == serverUserId)
                 .Execute();
         }
 
         public ExportFormatCassandraEntity? Get(long serverUserId, Guid id)
         {
-            return session
-                .GetTable<ExportFormatCassandraEntity>()
+            return table
                 .Where(x => x.ServerUserID == serverUserId && x.ID == id)
                 .Execute()
                 .FirstOrDefault();
