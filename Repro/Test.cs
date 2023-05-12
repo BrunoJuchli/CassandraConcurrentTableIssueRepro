@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Bogus;
 using FluentAssertions;
+using Xunit.Abstractions;
 
 namespace Repro;
 
@@ -21,11 +22,15 @@ public class Test
     private InterlockedExchangeable<ImmutableList<ExportFormatCassandraEntity>> addedEntities =
         new(ImmutableList<ExportFormatCassandraEntity>.Empty);
 
+    private readonly ITestOutputHelper testOutput;
+
     private readonly PersistencyExportFormatsCassandra persistency;
 
     public Test(
-        DatastoreContext context)
+        DatastoreContext context,
+        ITestOutputHelper testOutput)
     {
+        this.testOutput = testOutput;
         this.persistency = new PersistencyExportFormatsCassandra(
             context.CassandraSession ?? throw new Exception("not initialized"));
     }
@@ -46,10 +51,6 @@ public class Test
         
         addedEntities.UpdateUnsafe(initialEntities);
         
-        // TODO:
-        // concurrently query all entities, query some entites and insert new entities
-        // abort in case querying an entity fails
-        // or after timeout
         var cts = new CancellationTokenSource();
         cts.CancelAfter(TimeSpan.FromSeconds(30));
 
@@ -76,6 +77,9 @@ public class Test
         cts.Cancel();
         
         await Task.WhenAll(allTasks);
+        
+        testOutput.WriteLine(
+            $"ended without error. Number of entities: {addedEntities.Value.Count}");
     }
 
     private async Task AddEntitiesAsync(
@@ -111,8 +115,8 @@ public class Test
 
     private void QueryAll()
     {
-        var byUserId = addedEntities
-            .Value
+        var currentEntities = addedEntities.Value;
+        var byUserId = currentEntities
             .GroupBy(x => x.ServerUserID)
             .ToArray();
 
@@ -125,6 +129,10 @@ public class Test
 
         actual.Should()
             .HaveCountGreaterOrEqualTo(expected.Count());
+
+        var all = persistency.GetAll().ToArray();
+
+        all.Should().HaveCountGreaterOrEqualTo(currentEntities.Count);
     }
     
     private void LoopQuerySingle(
