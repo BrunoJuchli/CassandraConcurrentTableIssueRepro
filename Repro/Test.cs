@@ -8,7 +8,7 @@ namespace Repro;
 [Collection(DatastoreContext.CollectionName)]
 public class Test
 {
-    private Faker<ExportFormatCassandraEntity> entityFaker = new Faker<ExportFormatCassandraEntity>()
+    private readonly Faker<ExportFormatCassandraEntity> entityFaker = new Faker<ExportFormatCassandraEntity>()
         .CustomInstantiator(f => 
             new ExportFormatCassandraEntity
             {
@@ -19,7 +19,7 @@ public class Test
                 ExportFormatType = f.Random.Int(0, 10)
             });
 
-    private InterlockedExchangeable<ImmutableList<ExportFormatCassandraEntity>> addedEntities =
+    private readonly InterlockedExchangeable<ImmutableList<ExportFormatCassandraEntity>> addedEntities =
         new(ImmutableList<ExportFormatCassandraEntity>.Empty);
 
     private readonly ITestOutputHelper testOutput;
@@ -52,7 +52,7 @@ public class Test
         addedEntities.UpdateUnsafe(initialEntities);
         
         var cts = new CancellationTokenSource();
-        cts.CancelAfter(TimeSpan.FromSeconds(30));
+        cts.CancelAfter(TimeSpan.FromSeconds(90));
 
         var entityAddingTasks = Enumerable
             .Range(1, 10)
@@ -79,7 +79,7 @@ public class Test
         await Task.WhenAll(allTasks);
         
         testOutput.WriteLine(
-            $"ended without error. Number of entities: {addedEntities.Value.Count}");
+            $"ended without error. Number of added entities: {addedEntities.Value.Count}");
     }
 
     private async Task AddEntitiesAsync(
